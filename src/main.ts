@@ -1,58 +1,56 @@
 import * as fs from "fs";
-import {Octokit} from "@octokit/core";
-import {Endpoints, OctokitResponse} from "@octokit/types";
+import { Octokit } from "@octokit/core";
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import * as path from "path";
 import { exit } from "process";
 
-function getInputBoolRequired(name: string) {
-    return core.getInput(name, {required: true}) === "true";
-}
-
+// Gets a input bool with a default value
 function getInputBool(name: string, def: boolean) {
-    let ip = core.getBooleanInput(name);
+    const ip = core.getBooleanInput(name);
     return ip === undefined ? def : ip;
 }
 
+// Gets a required input string
 function getInputStringRequired(name: string) {
-    return core.getInput(name, {required: true});
+    return core.getInput(name, { required: true });
 }
 
+// Gets a input string with a default value
 function getInputString(name: string, def: string) {
-    let ip = core.getInput(name);
+    const ip = core.getInput(name);
     return ip === undefined ? def : ip;
 }
 
+// Gets a required multiline input
 function getInputArrayRequired(name: string) {
-    return core.getMultilineInput(name, {required: true});
+    return core.getMultilineInput(name, { required: true });
 }
 
-function getInputArray(name: string) {
-    return core.getMultilineInput(name);
-}
-
+// Gets a repository from the input (format owner/repo)
 function getInputRepository(name: string, def: any) {
-    let ip = core.getInput(name);
-    if(ip === undefined) return def;
-    let split = ip.split("/");
-    return {owner: split[0], repo: split[1]};
+    const ip = core.getInput(name);
+    if (ip === undefined) return def;
+    const split = ip.split("/");
+    if (split.length !== 2) error("Repository must be in format owner/repo!");
+    return { owner: split[0], repo: split[1] };
 }
 
-const ERR_HANDLED = "ERR_HANDEL";
+const ERR_HANDLED = "ERR_HANDLED";
 
-let skipErrors: boolean = true;
+let skipErrors = true;
 
+// Error handler
 function error(msg: string, throwError = true) {
-    if(skipErrors) {
+    if (skipErrors) {
         core.error(`Skipping error '${msg}'! If you want to disable error skipping: 'skip_errors: false'`);
-        if(throwError) throw ERR_HANDLED;
+        if (throwError) throw ERR_HANDLED;
     } else {
         core.setFailed(`Error occured '${msg}'! If you want to enable error skipping: 'skip_errors: true'`);
         exit(1);
     }
 }
 
+// Main loop
 async function main() {
     const githubToken = getInputStringRequired("token");
 
@@ -72,27 +70,32 @@ async function main() {
 
     // Repository stuff
     const repository = getInputRepository("repository", github.context.repo);
-    
+
     const octokit = github.getOctokit(githubToken);
 
     core.info("Looking for release...");
     const release = getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
 
-    fileMap.forEach((line, id)=>{
+    fileMap.forEach((line, id) => {
         try {
-            const {source, dest} = replaceTag(parseFilePiper(line), tag);
+            const { source, dest } = replaceTag(parseFilePiper(line), tag);
             core.info(`Trying to upload file '${source}' to '${dest}'`);
             uploadToRelease(repository, release, source, dest, tag, overwrite, octokit);
-        } catch(e: any) {
-            if(e !== ERR_HANDLED) error(`Error while parsing filePiper (${id}:'${line}'). Message: '${e.message}'`, false);
+        } catch (e: any) {
+            if (e !== ERR_HANDLED) error(`Error while parsing filePiper (${id}:'${line}'). Message: '${e.message}'`, false);
         }
     });
 }
 
+// Replaces $tag to the tag of the file piper output
 function replaceTag(piperOutput: any, tag: string) {
-    return {source: piperOutput.source.replace(/\$tag/g, tag), dest: piperOutput.dest.replace(/\$tag/g, tag)};
+    return {
+        source: piperOutput.source.replace(/\$tag/g, tag),
+        dest: piperOutput.dest.replace(/\$tag/g, tag)
+    };
 }
 
+// Parses a file piper
 function parseFilePiper(line: string) {
     let source = "";
     let dest = "";
@@ -100,14 +103,14 @@ function parseFilePiper(line: string) {
     let state = false;
     let buf = "";
     let escape = false;
-    for(let c of line) {
-        if(escape) {
+    for (const c of line) {
+        if (escape) {
             escape = false;
             buf += c;
         } else {
-            if(c === "\\") escape = true;
-            else if(c === ">") {
-                if(state) throw "cannot have 2 '>'! (If you meant to include '>' in the file path try using '\\>')";
+            if (c === "\\") escape = true;
+            else if (c === ">") {
+                if (state) throw new Error("cannot have 2 '>'! (If you meant to include '>' in the file path try using '\\>')");
                 else {
                     source = buf;
                     buf = "";
@@ -117,49 +120,51 @@ function parseFilePiper(line: string) {
         }
     }
 
-    if(state) {
+    if (state) {
         dest = buf;
 
-        if(dest.trim() === "" || source.trim() === "") throw "source or destination cannot be empty!";
+        if (dest.trim() === "" || source.trim() === "") throw new Error("source or destination cannot be empty!");
 
         return { source, dest };
-    } else throw "must have 1 '>'!";
+    } else throw new Error("must have 1 '>'!");
 }
 
+// Gets or creates (if not exists) a release
 async function getOrCreateRelease(repository: any, tag: string, prerelease: boolean, draft: boolean, release_name: string, release_body: string, octokit: Octokit) {
-    let result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
+    const result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
         ...repository,
-        tag: tag
+        tag
     });
 
-    if(result.status === 200) {
-        core.debug("Found release (id: " + result.data.id + ")!");
+    if (result.status === 200) {
+        core.debug(`Found release (id: ${result.data.id}!`);
         return result;
     } else {
         core.debug("Release not found! Creating it...");
-        return (await octokit.request("POST /repos/{owner}/{repo}/releases", {
+        return await octokit.request("POST /repos/{owner}/{repo}/releases", {
             ...repository,
             tag_name: tag,
             name: release_name,
             body: release_body,
-            prerelease: prerelease,
-            draft: draft
-        }));
+            prerelease,
+            draft
+        });
     }
 }
 
+// Uploads a file to a release
 async function uploadToRelease(repository: any, release: any, file: string, name: string, tag: string, overwrite: boolean, octokit: Octokit) {
     const stat = fs.statSync(file);
-    if(stat.isFile()) {
-        const assets = await octokit.request('GET /repos/{owner}/{repo}/releases/{release_id}/assets', {
+    if (stat.isFile()) {
+        const assets = await octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", {
             ...repository,
             release_id: release.data.id
         });
 
-        if(assets.status === 200) {
-            let duplicateAsset = assets.data.filter(asset=>asset.name === name)[0];
-            if(duplicateAsset) {
-                if(overwrite) {
+        if (assets.status === 200) {
+            const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
+            if (duplicateAsset) {
+                if (overwrite) {
                     await octokit.request("DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}", {
                         ...repository,
                         asset_id: duplicateAsset.id
@@ -170,8 +175,8 @@ async function uploadToRelease(repository: any, release: any, file: string, name
             const data = fs.readFileSync(file);
             const data_size = stat.size;
 
-            const asset: OctokitResponse<any, number> = await octokit.request(`POST ${release.data.upload_url}`, {
-                name: name,
+            const asset = await octokit.request(`POST ${release.data.upload_url}`, {
+                name,
                 data,
                 headers: {
                     "content-type": "binary/octet-stream",
@@ -179,10 +184,13 @@ async function uploadToRelease(repository: any, release: any, file: string, name
                 }
             });
 
-            if(asset.status === 201) {
+            if (asset.status === 201) {
                 core.info(`Successfully uploaded ${file} (${asset.data.browser_download_url})!`);
                 return asset.data.browser_download_url;
             } else error(`Failed to upload asset ('${file}' -> '${name}')`);
         } else error(`Couldn't list all release assets (github token invalid?) ('${file}' -> '${name}')`);
-    } else error(`File doesn't exist, or is a directory ('${file}' -> '${name}')` );
+    } else error(`File doesn't exist, or is a directory ('${file}' -> '${name}')`);
 }
+
+// Call main loop
+main();
