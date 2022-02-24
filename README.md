@@ -175,16 +175,12 @@ jobs:
 
 </a>
 
-File pipers are basicly a combination of `<source>`, `>` and `<dest>`.
+File pipers are a combination of `<source>`, `>` and `<dest>` which specify where a file should go.
 
 <br>
 
 ### Examples
 
-Pipe file `a` to file `b`: <br>
-`a>b` 
+Pipe file `a` to file `b` -> `a>b` 
 
-<br>
-
-Pipe file `a>` to file `b>` (escaping `>` with `\>`): <br>
-`a\>>b\>`
+Pipe file `a>` to file `b>` (escaping `>` with `\>`) -> `a\>>b\>`
