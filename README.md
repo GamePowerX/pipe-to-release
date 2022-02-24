@@ -30,8 +30,8 @@ Heres a list of all the options you can include into the with block.
 ## Usage
 Basic multiple file upload:
 ```yaml
-- name: Upload files to release
-  uses: KotwOSS/upload-to-release@v1
+- name: Pipe files to release
+  uses: KotwOSS/pipe-to-release@v1
   with:
     repo_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -77,8 +77,8 @@ Multiple file upload with automated tag and release_name:
     with:
       token: ${{secrets.GITHUB_TOKEN}}
 
-- name: Upload files to release
-  uses: KotwOSS/upload-to-release@v1
+- name: Pipe files to release
+  uses: KotwOSS/pipe-to-release@v1
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -149,8 +149,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Upload files to release
-      uses: KotwOSS/upload-to-release@v1
+    - name: Pipe files to release
+      uses: KotwOSS/pipe-to-release@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
