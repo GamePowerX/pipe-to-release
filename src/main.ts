@@ -54,7 +54,7 @@ function error(msg: string, throwError = true) {
 }
 
 async function main() {
-    const githubToken = getInputStringRequired("repo_token");
+    const githubToken = getInputStringRequired("token");
 
     // File map
     const fileMap = getInputArrayRequired("filemap");
@@ -84,7 +84,7 @@ async function main() {
             core.info(`Trying to upload file '${source}' to '${dest}'`);
             uploadToRelease(repository, release, source, dest, tag, overwrite, octokit);
         } catch(e: any) {
-            if(e !== ERR_HANDLED) error(`Error while parsing filePiper (${id}:'${line}'). Message: '${e.message}'`);
+            if(e !== ERR_HANDLED) error(`Error while parsing filePiper (${id}:'${line}'). Message: '${e.message}'`, false);
         }
     });
 }
