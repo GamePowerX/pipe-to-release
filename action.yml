@@ -1,4 +1,4 @@
-name: 'Upload to release'
+name: 'Pipe to Release'
 description: 'Upload assets to an existing repository or create a new one.'
 author: 'KotwOSS'
 inputs:
@@ -51,7 +51,7 @@ inputs:
     required: false
     description: 'The body (description) of the release. '
     default: 'This is a very cool release'
-    
+
 runs:
   using: 'node12'
   main: 'dist/index.js'
