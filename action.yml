@@ -1,6 +1,8 @@
 name: 'Pipe to Release'
 description: 'Upload assets to an existing release or create a new one.'
 author: 'KotwOSS'
+icon: 'arrow-up-right'
+color: 'orange'
 inputs:
   token:
     required: true
