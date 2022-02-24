@@ -1,17 +1,18 @@
 import * as fs from "fs";
 import {Octokit} from "@octokit/core";
-import {Endpoints} from "@octokit/types";
+import {Endpoints, OctokitResponse} from "@octokit/types";
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as path from "path";
+import { exit } from "process";
 
 function getInputBoolRequired(name: string) {
     return core.getInput(name, {required: true}) === "true";
 }
 
 function getInputBool(name: string, def: boolean) {
-    let ip = core.getInput(name);
-    return ip === undefined ? def : (ip === "true");
+    let ip = core.getBooleanInput(name);
+    return ip === undefined ? def : ip;
 }
 
 function getInputStringRequired(name: string) {
@@ -38,7 +39,19 @@ function getInputRepository(name: string, def: any) {
     return {owner: split[0], repo: split[1]};
 }
 
+const ERR_HANDLED = "ERR_HANDEL";
 
+let skipErrors: boolean = true;
+
+function error(msg: string, throwError = true) {
+    if(skipErrors) {
+        core.error(`Skipping error '${msg}'! If you want to disable error skipping: 'skip_errors: false'`);
+        if(throwError) throw ERR_HANDLED;
+    } else {
+        core.setFailed(`Error occured '${msg}'! If you want to enable error skipping: 'skip_errors: true'`);
+        exit(1);
+    }
+}
 
 async function main() {
     const githubToken = getInputStringRequired("repo_token");
@@ -52,6 +65,7 @@ async function main() {
     const prerelease = getInputBool("prerelease", false);
     const draft = getInputBool("draft", true);
     const tag = getInputString("tag", "mytag");
+    skipErrors = getInputBool("skip_errors", true);
 
     // Misc stuff
     const overwrite = getInputBool("overwrite", false);
@@ -61,9 +75,55 @@ async function main() {
     
     const octokit = github.getOctokit(githubToken);
 
-    core.debug("Looking for release...");
+    core.info("Looking for release...");
     const release = getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
 
+    fileMap.forEach((line, id)=>{
+        try {
+            const {source, dest} = replaceTag(parseFilePiper(line), tag);
+            core.info(`Trying to upload file '${source}' to '${dest}'`);
+            uploadToRelease(repository, release, source, dest, tag, overwrite, octokit);
+        } catch(e: any) {
+            if(e !== ERR_HANDLED) error(`Error while parsing filePiper (${id}:'${line}'). Message: '${e.message}'`);
+        }
+    });
+}
+
+function replaceTag(piperOutput: any, tag: string) {
+    return {source: piperOutput.source.replace(/\$tag/g, tag), dest: piperOutput.dest.replace(/\$tag/g, tag)};
+}
+
+function parseFilePiper(line: string) {
+    let source = "";
+    let dest = "";
+
+    let state = false;
+    let buf = "";
+    let escape = false;
+    for(let c of line) {
+        if(escape) {
+            escape = false;
+            buf += c;
+        } else {
+            if(c === "\\") escape = true;
+            else if(c === ">") {
+                if(state) throw "cannot have 2 '>'! (If you meant to include '>' in the file path try using '\\>')";
+                else {
+                    source = buf;
+                    buf = "";
+                    state = true;
+                }
+            } else buf += c;
+        }
+    }
+
+    if(state) {
+        dest = buf;
+
+        if(dest.trim() === "" || source.trim() === "") throw "source or destination cannot be empty!";
+
+        return { source, dest };
+    } else throw "must have 1 '>'!";
 }
 
 async function getOrCreateRelease(repository: any, tag: string, prerelease: boolean, draft: boolean, release_name: string, release_body: string, octokit: Octokit) {
@@ -91,7 +151,7 @@ async function getOrCreateRelease(repository: any, tag: string, prerelease: bool
 async function uploadToRelease(repository: any, release: any, file: string, name: string, tag: string, overwrite: boolean, octokit: Octokit) {
     const stat = fs.statSync(file);
     if(stat.isFile()) {
-        let assets = await octokit.request('GET /repos/{owner}/{repo}/releases/{release_id}/assets', {
+        const assets = await octokit.request('GET /repos/{owner}/{repo}/releases/{release_id}/assets', {
             ...repository,
             release_id: release.data.id
         });
@@ -100,159 +160,29 @@ async function uploadToRelease(repository: any, release: any, file: string, name
             let duplicateAsset = assets.data.filter(asset=>asset.name === name)[0];
             if(duplicateAsset) {
                 if(overwrite) {
-                    
-                } else core.warning("duplicate without overwrite=true. Skipping file...");
+                    await octokit.request("DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}", {
+                        ...repository,
+                        asset_id: duplicateAsset.id
+                    });
+                } else error(`Duplicate asset without overwrite=true ('${file}' -> '${name}')`);
             }
-        } else core.warning("couldn't list all release assets! Skipping file...");
-    } else core.warning("skipped file '" + file + "' since its not found or not a file.");
+
+            const data = fs.readFileSync(file);
+            const data_size = stat.size;
+
+            const asset: OctokitResponse<any, number> = await octokit.request(`POST ${release.data.upload_url}`, {
+                name: name,
+                data,
+                headers: {
+                    "content-type": "binary/octet-stream",
+                    "content-length": data_size
+                }
+            });
+
+            if(asset.status === 201) {
+                core.info(`Successfully uploaded ${file} (${asset.data.browser_download_url})!`);
+                return asset.data.browser_download_url;
+            } else error(`Failed to upload asset ('${file}' -> '${name}')`);
+        } else error(`Couldn't list all release assets (github token invalid?) ('${file}' -> '${name}')`);
+    } else error(`File doesn't exist, or is a directory ('${file}' -> '${name}')` );
 }
-
-type RepoAssetsResp = Endpoints["GET /repos/:owner/:repo/releases/:release_id/assets"]["response"]["data"]
-type ReleaseByTagResp = Endpoints["GET /repos/:owner/:repo/releases/tags/:tag"]["response"]
-type CreateReleaseResp = Endpoints["POST /repos/:owner/:repo/releases"]["response"]
-type UploadAssetResp = Endpoints["POST /repos/:owner/:repo/releases/:release_id/assets{?name,label}"]["response"]
-
-
-async function upload_to_release(
-  release: ReleaseByTagResp | CreateReleaseResp,
-  file: string,
-  asset_name: string,
-  tag: string,
-  overwrite: boolean,
-  octokit: Octokit
-): Promise<undefined | string> {
-  const stat = fs.statSync(file)
-  if (!stat.isFile()) {
-    core.debug(`Skipping ${file}, since its not a file`)
-    return
-  }
-  const file_size = stat.size
-  const file_bytes = fs.readFileSync(file)
-
-  // Check for duplicates.
-  const assets: RepoAssetsResp = await octokit.paginate(
-    octokit.repos.listReleaseAssets,
-    {
-      ...repo(),
-      release_id: release.data.id
-    }
-  )
-  const duplicate_asset = assets.find(a => a.name === asset_name)
-  if (duplicate_asset !== undefined) {
-    if (overwrite) {
-      core.debug(
-        `An asset called ${asset_name} already exists in release ${tag} so we"ll overwrite it.`
-      )
-      await octokit.repos.deleteReleaseAsset({
-        ...repo(),
-        asset_id: duplicate_asset.id
-      })
-    } else {
-      core.setFailed(`An asset called ${asset_name} already exists.`)
-      return duplicate_asset.browser_download_url
-    }
-  } else {
-    core.debug(
-      `No pre-existing asset called ${asset_name} found in release ${tag}. All good.`
-    )
-  }
-
-  core.debug(`Uploading ${file} to ${asset_name} in release ${tag}.`)
-  const uploaded_asset: UploadAssetResp = await octokit.repos.uploadReleaseAsset(
-    {
-      url: release.data.upload_url,
-      name: asset_name,
-      data: file_bytes,
-      headers: {
-        "content-type": "binary/octet-stream",
-        "content-length": file_size
-      }
-    }
-  )
-  return uploaded_asset.data.browser_download_url
-}
-
-function repo(): {owner: string; repo: string} {
-  const repo_name = core.getInput("repo_name")
-  // If we"re not targeting a foreign repository, we can just return immediately and don"t have to do extra work.
-  if (!repo_name) {
-    return github.context.repo
-  }
-  const owner = repo_name.substr(0, repo_name.indexOf("/"))
-  if (!owner) {
-    throw new Error(`Could not extract "owner" from "repo_name": ${repo_name}.`)
-  }
-  const repo = repo_name.substr(repo_name.indexOf("/") + 1)
-  if (!repo) {
-    throw new Error(`Could not extract "repo" from "repo_name": ${repo_name}.`)
-  }
-  return {
-    owner,
-    repo
-  }
-}
-
-async function run(): Promise<void> {
-  try {
-    // Get the inputs from the workflow file: https://github.com/actions/toolkit/tree/master/packages/core#inputsoutputs
-    const token = core.getInput("repo_token", {required: true})
-    const file = core.getInput("file", {required: true})
-    const tag = core
-      .getInput("tag", {required: true})
-      .replace("refs/tags/", "")
-      .replace("refs/heads/", "")
-
-    const file_glob = core.getInput("file_glob") == "true" ? true : false
-    const overwrite = core.getInput("overwrite") == "true" ? true : false
-    const prerelease = core.getInput("prerelease") == "true" ? true : false
-    const release_name = core.getInput("release_name")
-    const body = core.getInput("body")
-
-    const octokit: Octokit = github.getOctokit(token)
-    const release = await get_release_by_tag(
-      tag,
-      prerelease,
-      release_name,
-      body,
-      octokit
-    )
-
-    if (file_glob) {
-      const files = glob.sync(file)
-      if (files.length > 0) {
-        for (const file of files) {
-          const asset_name = path.basename(file)
-          const asset_download_url = await upload_to_release(
-            release,
-            file,
-            asset_name,
-            tag,
-            overwrite,
-            octokit
-          )
-          core.setOutput("browser_download_url", asset_download_url)
-        }
-      } else {
-        core.setFailed("No files matching the glob pattern found.")
-      }
-    } else {
-      const asset_name =
-        core.getInput("asset_name") !== ""
-          ? core.getInput("asset_name").replace(/\$tag/g, tag)
-          : path.basename(file)
-      const asset_download_url = await upload_to_release(
-        release,
-        file,
-        asset_name,
-        tag,
-        overwrite,
-        octokit
-      )
-      core.setOutput("browser_download_url", asset_download_url)
-    }
-  } catch (error) {
-    core.setFailed(error.message)
-  }
-}
-
-run()
