@@ -3,7 +3,7 @@ description: 'Upload assets to an existing release or create a new one.'
 author: 'KotwOSS'
 branding:
   icon: 'arrow-up-right'
-  color: 'orange'
+  color: 'green'
 inputs:
   token:
     required: true
