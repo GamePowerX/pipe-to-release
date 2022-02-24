@@ -1,11 +1,57 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Upload to release'
+description: 'Upload assets to an existing repository or create a new one.'
+author: 'KotwOSS'
 inputs:
-  milliseconds: # change this
+  token:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'The token this action uses to contact the github api.'
+    default: 'none'
+
+  filemap:
+    required: true
+    description: 'The list of files that will be uploaded. See <a href="#file-piper">FilePiper</a> for more information.'
+    default: 'none'
+
+  repository:
+    required: false
+    description: 'The repository where the release will be created it.'
+    default: 'active repository'
+
+  skip_errors:
+    required: false
+    description: 'If true, the action will skip errors instead of setting the build to failed.'
+    default: true
+
+  draft:
+    required: false
+    description: 'If true, the action will create a draft release. (Not published)'
+    default: true
+
+  prerelease:
+    required: false
+    description: 'If true, the action will creae a prerelease.'
+    default: false
+
+  overwrite:
+    required: false
+    description: 'If true, the action will update already existing assets instead of throwing an error'
+    default: false
+
+  tag:
+    required: false
+    description: 'The tag of the release.'
+    default: 'My cool release'
+
+  release_name:
+    required: false
+    description: 'The name of the release.'
+    default: 'My cool release'
+
+  release_body:
+    required: false
+    description: 'The body (description) of the release. '
+    default: 'This is a very cool release'
+    
 runs:
   using: 'node12'
   main: 'dist/index.js'
