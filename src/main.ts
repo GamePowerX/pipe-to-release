@@ -73,8 +73,13 @@ async function main() {
 
     const octokit = github.getOctokit(githubToken);
 
+    const release_id = core.getInput("release_id");
+
     core.info("Looking for release...");
-    const release = await getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
+
+    const release = release_id ? 
+        await getRelease(repository, release_id, octokit) : 
+        await getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
 
     fileMap.forEach((line, id) => {
         try {
@@ -85,6 +90,8 @@ async function main() {
             if (e !== ERR_HANDLED) error(`Error while parsing filePiper (${id}:'${line}'). Message: '${e.message}'`, false);
         }
     });
+
+    core.setOutput("release_id", release.data.id);
 }
 
 // Replaces $tag to the tag of the file piper output
@@ -129,32 +136,34 @@ function parseFilePiper(line: string) {
     } else throw new Error("must have 1 '>'!");
 }
 
+// Gets a release by its id
+async function getRelease(repository: any, release_id: string, octokit: Octokit) {
+    return await octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}", {
+        ...repository,
+        release_id
+    });
+}
+
 // Gets or creates (if not exists) a release
 async function getOrCreateRelease(repository: any, tag: string, prerelease: boolean, draft: boolean, release_name: string, release_body: string, octokit: Octokit) {
     try {
         core.info(`KEK: ${JSON.stringify({ ...repository, tag })}`);
-
-        const result = await octokit.request("GET /repos/{owner}/{repo}/releases", {
-            ...repository
+        const result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
+            ...repository,
+            tag
         });
-        const release = result.data.filter(e => e.tag_name === tag)[0];
-
-        if (release) {
-            core.info(`Found release (id: ${release.id}!`);
-            return release;
-        } else throw new Error("Release not found!");
+        core.info(`Found release (id: ${result.data.id}!`);
+        return result;
     } catch (e: any) {
         core.info("Release not found! Creating it...");
-        return (
-            await octokit.request("POST /repos/{owner}/{repo}/releases", {
-                ...repository,
-                tag_name: tag,
-                name: release_name,
-                body: release_body,
-                prerelease,
-                draft
-            })
-        ).data;
+        return await octokit.request("POST /repos/{owner}/{repo}/releases", {
+            ...repository,
+            tag_name: tag,
+            name: release_name,
+            body: release_body,
+            prerelease,
+            draft
+        });
     }
 }
 
@@ -167,7 +176,7 @@ async function uploadToRelease(repository: any, release: any, file: string, name
         try {
             const assets = await octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", {
                 ...repository,
-                release_id: release.id
+                release_id: release.data.id
             });
 
             const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
@@ -185,7 +194,7 @@ async function uploadToRelease(repository: any, release: any, file: string, name
             const data_size = stat.size;
 
             try {
-                const asset = await octokit.request(`POST ${release.upload_url}`, {
+                const asset = await octokit.request(`POST ${release.data.upload_url}`, {
                     name,
                     data,
                     headers: {
