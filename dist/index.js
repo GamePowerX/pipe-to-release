@@ -186,6 +186,7 @@ function uploadToRelease(repository, release, file, name, tag, overwrite, octoki
                 const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
                 if (duplicateAsset) {
                     if (overwrite) {
+                        core.info("Deleting duplicate asset...");
                         yield octokit.request("DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}", Object.assign(Object.assign({}, repository), { asset_id: duplicateAsset.id }));
                     }
                     else
