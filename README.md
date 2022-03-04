@@ -15,11 +15,11 @@ Heres a list of all the options you can include into the with block.
 | name         | description                                                                                 | required | default                     |
 | ------------ | ------------------------------------------------------------------------------------------- | -------- | --------------------------- |
 | token        | The token this action uses to contact the github api.                                       | true     | none                        |
-| repository   | The repository where the release will be created it.                                        | false    | active repository           |
+| repository   | The repository where the release will be created in.                                        | false    | active repository           |
 | filemap      | The list of files that will be uploaded. See <a href="#file-piper">FilePiper</a> for more information. | true     | none                        |
 | skip_errors  | If true, the action will skip errors instead of setting the build to failed.                | false    | true                        |
 | draft        | If true, the action will create a draft release. (Not published)                            | false    | true                        |
-| prerelease   | If true, the action will creae a prerelease.                                                | false    | false                       |
+| prerelease   | If true, the action will create a prerelease.                                                | false    | false                       |
 | overwrite    | If true, the action will update already existing assets instead of throwing an error        | false    | false                       |
 | tag          | The tag of the release.                                                                     | false    | mytag                       |
 | release_name | The name of the release.                                                                    | false    | My cool release             |
@@ -31,7 +31,7 @@ Heres a list of all the options you can include into the with block.
 Basic multiple file upload:
 ```yaml
 - name: Pipe files to release
-  uses: KotwOSS/pipe-to-release@v1
+  uses: KotwOSS/pipe-to-release@<version>
   with:
     repo_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -78,7 +78,7 @@ Multiple file upload with automated tag and release_name:
       token: ${{secrets.GITHUB_TOKEN}}
 
 - name: Pipe files to release
-  uses: KotwOSS/pipe-to-release@v1
+  uses: KotwOSS/pipe-to-release@<version>
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -150,7 +150,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Pipe files to release
-      uses: KotwOSS/pipe-to-release@v1
+      uses: KotwOSS/pipe-to-release@<version>
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
