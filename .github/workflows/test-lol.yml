@@ -1,0 +1,42 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
+
+name: testlol
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Generate commit hash
+        id: commithash
+        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      - name: Generate build number
+        id: buildnumber
+        uses: einaregilsson/build-number@v3 
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Pipe files to release
+        uses: KotwOSS/pipe-to-release@2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+          filemap: |
+            package.json>package.json
+            jest.config.js>jest.js
+
+          skip_errors: true
+
+          draft: true
+          prerelease: true
+
+          tag: "build_${{ env.BUILD_NUMBER }}"
+
+          release_name: "build:${{ steps.commithash.outputs.sha_short }}"
+          release_body: "This is an automated build"
