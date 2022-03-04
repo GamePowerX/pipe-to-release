@@ -16,7 +16,8 @@ Heres a list of all the options you can include into the with block.
 | ------------ | ------------------------------------------------------------------------------------------- | -------- | --------------------------- |
 | token        | The token this action uses to contact the github api.                                       | true     | none                        |
 | repository   | The repository where the release will be created in.                                        | false    | active repository           |
-| filemap      | The list of files that will be uploaded. See <a href="#file-piper">FilePiper</a> for more information. | false     | empty                        |
+| filemap      | The list of files that will be uploaded. See <a href="#file-piper">FilePiper</a> for more information. If not set, just a release is being created. | false     | empty                        |
+| release_id | If set, the action will look for an existing release with that id. | false | none |
 | skip_errors  | If true, the action will skip errors instead of setting the build to failed.                | false    | true                        |
 | draft        | If true, the action will create a draft release. (Not published)                            | false    | true                        |
 | prerelease   | If true, the action will create a prerelease.                                                | false    | false                       |
@@ -24,6 +25,12 @@ Heres a list of all the options you can include into the with block.
 | tag          | The tag of the release.                                                                     | false    | mytag                       |
 | release_name | The name of the release.                                                                    | false    | My cool release             |
 | release_body | The body (description) of the release.                                                      | false    | This is a very cool release |
+
+<br>
+
+## Outputs
+
+On succeed you will get the `release_id` as an output.
 
 <br>
 
@@ -107,6 +114,7 @@ jobs:
     outputs:
       BUILD_ID: ${{ steps.buildnumber.outputs.build_number }}
       SHA_SHORT: ${{ steps.commithash.outputs.sha_short }}
+      RELEASE_ID: ${{ steps.release.outputs.release_id }}
 
     steps:
       - uses: actions/checkout@v2
@@ -120,6 +128,21 @@ jobs:
         uses: einaregilsson/build-number@v3 
         with:
           token: ${{ secrets.github_token }}
+
+      - name: Create a release
+        id: release
+        uses: KotwOSS/pipe-to-release@<version>
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+          skip_errors: true
+
+          draft: true
+          prerelease: true
+
+          tag: "build_${{ steps.buildnumber.outputs.build_number }}"
+          release_name: "build:${{ steps.commithash.outputs.sha_short }}"
+          release_body: "This is an automated build"
           
 
   buildMatrix:
@@ -158,12 +181,7 @@ jobs:
 
         skip_errors: true
 
-        draft: true
-        prerelease: true
-
-        tag: "build_${{ needs.prepare.outputs.BUILD_ID }}"
-        release_name: "build:${{ needs.prepare.outputs.SHA_SHORT }}"
-        release_body: "This is an automated build"
+        release_id: ${{ needs.prepare.outputs.RELEASE_ID }}
 ```
 
 
