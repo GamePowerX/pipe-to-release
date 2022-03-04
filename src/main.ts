@@ -153,6 +153,8 @@ async function getOrCreateRelease(repository: any, tag: string, prerelease: bool
 
 // Uploads a file to a release
 async function uploadToRelease(repository: any, release: any, file: string, name: string, tag: string, overwrite: boolean, octokit: Octokit) {
+    if(!fs.existsSync(file)) error(`File doesn't exist ('${file}' -> '${name}')`);
+
     const stat = fs.statSync(file);
     if (stat.isFile()) {
         try {
@@ -192,7 +194,7 @@ async function uploadToRelease(repository: any, release: any, file: string, name
         } catch (e: any) {
             error(`Couldn't list all release assets (github token invalid?) ('${file}' -> '${name}'); Error: ${e}`);
         }
-    } else error(`File doesn't exist, or is a directory ('${file}' -> '${name}')`);
+    } else error(`File is a directory ('${file}' -> '${name}')`);
 }
 
 // Call main loop
