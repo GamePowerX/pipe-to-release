@@ -163,14 +163,19 @@ function getOrCreateRelease(repository, tag, prerelease, draft, release_name, re
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.info(`KEK: ${JSON.stringify(Object.assign(Object.assign({}, repository), { tag }))}`);
-            const result = yield octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", Object.assign(Object.assign({}, repository), { tag }));
-            core.info(`Found release (id: ${result.data.id}!`);
-            return result;
+            const result = yield octokit.request("GET /repos/{owner}/{repo}/releases", Object.assign({}, repository));
+            const release = result.data.filter(e => e.tag_name === tag)[0];
+            if (release) {
+                core.info(`Found release (id: ${release.id}!`);
+                return release;
+            }
+            else
+                throw new Error("Release not found!");
         }
         catch (e) {
             core.info("Release not found! Creating it...");
-            return yield octokit.request("POST /repos/{owner}/{repo}/releases", Object.assign(Object.assign({}, repository), { tag_name: tag, name: release_name, body: release_body, prerelease,
-                draft }));
+            return (yield octokit.request("POST /repos/{owner}/{repo}/releases", Object.assign(Object.assign({}, repository), { tag_name: tag, name: release_name, body: release_body, prerelease,
+                draft }))).data;
         }
     });
 }
@@ -182,7 +187,7 @@ function uploadToRelease(repository, release, file, name, tag, overwrite, octoki
         const stat = fs.statSync(file);
         if (stat.isFile()) {
             try {
-                const assets = yield octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", Object.assign(Object.assign({}, repository), { release_id: release.data.id }));
+                const assets = yield octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", Object.assign(Object.assign({}, repository), { release_id: release.id }));
                 const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
                 if (duplicateAsset) {
                     if (overwrite) {
@@ -195,7 +200,7 @@ function uploadToRelease(repository, release, file, name, tag, overwrite, octoki
                 const data = fs.readFileSync(file);
                 const data_size = stat.size;
                 try {
-                    const asset = yield octokit.request(`POST ${release.data.upload_url}`, {
+                    const asset = yield octokit.request(`POST ${release.upload_url}`, {
                         name,
                         data,
                         headers: {

@@ -133,22 +133,28 @@ function parseFilePiper(line: string) {
 async function getOrCreateRelease(repository: any, tag: string, prerelease: boolean, draft: boolean, release_name: string, release_body: string, octokit: Octokit) {
     try {
         core.info(`KEK: ${JSON.stringify({ ...repository, tag })}`);
-        const result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
-            ...repository,
-            tag
+
+        const result = await octokit.request("GET /repos/{owner}/{repo}/releases", {
+            ...repository
         });
-        core.info(`Found release (id: ${result.data.id}!`);
-        return result;
+        const release = result.data.filter(e => e.tag_name === tag)[0];
+
+        if (release) {
+            core.info(`Found release (id: ${release.id}!`);
+            return release;
+        } else throw new Error("Release not found!");
     } catch (e: any) {
         core.info("Release not found! Creating it...");
-        return await octokit.request("POST /repos/{owner}/{repo}/releases", {
-            ...repository,
-            tag_name: tag,
-            name: release_name,
-            body: release_body,
-            prerelease,
-            draft
-        });
+        return (
+            await octokit.request("POST /repos/{owner}/{repo}/releases", {
+                ...repository,
+                tag_name: tag,
+                name: release_name,
+                body: release_body,
+                prerelease,
+                draft
+            })
+        ).data;
     }
 }
 
@@ -161,7 +167,7 @@ async function uploadToRelease(repository: any, release: any, file: string, name
         try {
             const assets = await octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", {
                 ...repository,
-                release_id: release.data.id
+                release_id: release.id
             });
 
             const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
@@ -179,7 +185,7 @@ async function uploadToRelease(repository: any, release: any, file: string, name
             const data_size = stat.size;
 
             try {
-                const asset = await octokit.request(`POST ${release.data.upload_url}`, {
+                const asset = await octokit.request(`POST ${release.upload_url}`, {
                     name,
                     data,
                     headers: {
