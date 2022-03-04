@@ -23,7 +23,7 @@ jobs:
           token: ${{secrets.GITHUB_TOKEN}}
 
       - name: Pipe files to release
-        uses: KotwOSS/pipe-to-release@2.0.3a3
+        uses: KotwOSS/pipe-to-release@2.0.3a4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -41,7 +41,7 @@ jobs:
           release_body: "This is an automated build"
 
       - name: Pipe files to release 2
-        uses: KotwOSS/pipe-to-release@2.0.3a3
+        uses: KotwOSS/pipe-to-release@2.0.3a4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
