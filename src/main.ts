@@ -167,6 +167,7 @@ async function uploadToRelease(repository: any, release: any, file: string, name
             const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
             if (duplicateAsset) {
                 if (overwrite) {
+                    core.info("Deleting duplicate asset...");
                     await octokit.request("DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}", {
                         ...repository,
                         asset_id: duplicateAsset.id
