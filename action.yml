@@ -43,7 +43,11 @@ inputs:
 
   release_body:
     required: false
-    description: 'The body (description) of the release. '
+    description: 'The body (description) of the release.'
+  
+  release_id:
+    required: false
+    description: 'The id of the release.'
 
 runs:
   using: 'node12'
