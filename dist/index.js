@@ -162,6 +162,7 @@ function parseFilePiper(line) {
 function getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            core.info(`KEK: ${Object.assign(Object.assign({}, repository), { tag })}`);
             const result = yield octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", Object.assign(Object.assign({}, repository), { tag }));
             core.info(`Found release (id: ${result.data.id}!`);
             return result;
@@ -176,6 +177,8 @@ function getOrCreateRelease(repository, tag, prerelease, draft, release_name, re
 // Uploads a file to a release
 function uploadToRelease(repository, release, file, name, tag, overwrite, octokit) {
     return __awaiter(this, void 0, void 0, function* () {
+        if (!fs.existsSync(file))
+            error(`File doesn't exist ('${file}' -> '${name}')`);
         const stat = fs.statSync(file);
         if (stat.isFile()) {
             try {
@@ -211,7 +214,7 @@ function uploadToRelease(repository, release, file, name, tag, overwrite, octoki
             }
         }
         else
-            error(`File doesn't exist, or is a directory ('${file}' -> '${name}')`);
+            error(`File is a directory ('${file}' -> '${name}')`);
     });
 }
 // Call main loop
