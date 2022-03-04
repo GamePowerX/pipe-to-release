@@ -171,7 +171,6 @@ function getRelease(repository, release_id, octokit) {
 function getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            core.info(`KEK: ${JSON.stringify(Object.assign(Object.assign({}, repository), { tag }))}`);
             const result = yield octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", Object.assign(Object.assign({}, repository), { tag }));
             core.info(`Found release (id: ${result.data.id}!`);
             return result;
