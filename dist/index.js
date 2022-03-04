@@ -168,7 +168,7 @@ function getOrCreateRelease(repository, tag, prerelease, draft, release_name, re
             return result;
         }
         catch (e) {
-            core.warning(`KEKW: ${e}`);
+            core.warning(`KEKWs: ${e}`);
             core.debug("Release not found! Creating it...");
             return yield octokit.request("POST /repos/{owner}/{repo}/releases", Object.assign(Object.assign({}, repository), { tag_name: tag, name: release_name, body: release_body, prerelease,
                 draft }));

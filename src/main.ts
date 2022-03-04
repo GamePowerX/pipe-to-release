@@ -140,7 +140,7 @@ async function getOrCreateRelease(repository: any, tag: string, prerelease: bool
         core.debug(`Found release (id: ${result.data.id}!`);
         return result;
     } catch (e: any) {
-        core.warning(`KEKW: ${e}`);
+        core.warning(`KEKWs: ${e}`);
         core.debug("Release not found! Creating it...");
         return await octokit.request("POST /repos/{owner}/{repo}/releases", {
             ...repository,
