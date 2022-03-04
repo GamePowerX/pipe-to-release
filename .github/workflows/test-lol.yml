@@ -23,13 +23,30 @@ jobs:
           token: ${{secrets.GITHUB_TOKEN}}
 
       - name: Pipe files to release
-        uses: KotwOSS/pipe-to-release@2.0.1
+        uses: KotwOSS/pipe-to-release@2.0.3a1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+          filemap: |
+            jest.config.js>jest.js
+
+          skip_errors: true
+
+          draft: true
+          prerelease: true
+
+          tag: "build_${{ env.BUILD_NUMBER }}"
+
+          release_name: "build:${{ steps.commithash.outputs.sha_short }}"
+          release_body: "This is an automated build"
+
+      - name: Pipe files to release 2
+        uses: KotwOSS/pipe-to-release@2.0.3a1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
           filemap: |
             package.json>package.json
-            jest.config.js>jest.js
 
           skip_errors: true
 
