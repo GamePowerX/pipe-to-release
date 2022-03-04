@@ -23,7 +23,7 @@ jobs:
           token: ${{secrets.GITHUB_TOKEN}}
 
       - name: Pipe files to release
-        uses: KotwOSS/pipe-to-release@2.0.0a2
+        uses: KotwOSS/pipe-to-release@2.0.0a3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
