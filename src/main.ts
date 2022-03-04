@@ -31,7 +31,7 @@ function getInputRepository(name: string, def: any) {
     const ip = core.getInput(name);
     if (ip === undefined || ip.trim() === "") return def;
     const split = ip.split("/");
-    if (split.length !== 2) error("Repository must be in format owner/repo!");
+    if (split.length !== 2) error(`Repository must be in format owner/repo! (${ip})`);
     return { owner: split[0], repo: split[1] };
 }
 

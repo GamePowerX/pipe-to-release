@@ -51,7 +51,7 @@ function getInputStringRequired(name) {
 // Gets a input string with a default value
 function getInputString(name, def) {
     const ip = core.getInput(name);
-    return ip === undefined ? def : ip;
+    return ip === undefined || ip.trim() === "" ? def : ip;
 }
 // Gets a required multiline input
 function getInputArrayRequired(name) {
@@ -60,11 +60,11 @@ function getInputArrayRequired(name) {
 // Gets a repository from the input (format owner/repo)
 function getInputRepository(name, def) {
     const ip = core.getInput(name);
-    if (ip === undefined)
+    if (ip === undefined || ip.trim() === "")
         return def;
     const split = ip.split("/");
     if (split.length !== 2)
-        error("Repository must be in format owner/repo!");
+        error(`Repository must be in format owner/repo! (${ip})`);
     return { owner: split[0], repo: split[1] };
 }
 const ERR_HANDLED = "ERR_HANDLED";
