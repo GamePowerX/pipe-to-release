@@ -77,9 +77,7 @@ async function main() {
 
     core.info("Looking for release...");
 
-    const release = release_id ? 
-        await getRelease(repository, release_id, octokit) : 
-        await getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
+    const release = release_id ? await getRelease(repository, release_id, octokit) : await getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
 
     fileMap.forEach((line, id) => {
         try {

@@ -99,8 +99,11 @@ function main() {
         // Repository stuff
         const repository = getInputRepository("repository", github.context.repo);
         const octokit = github.getOctokit(githubToken);
+        const release_id = core.getInput("release_id");
         core.info("Looking for release...");
-        const release = yield getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
+        const release = release_id ?
+            yield getRelease(repository, release_id, octokit) :
+            yield getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
         fileMap.forEach((line, id) => {
             try {
                 const { source, dest } = replaceTag(parseFilePiper(line), tag);
@@ -112,6 +115,7 @@ function main() {
                     error(`Error while parsing filePiper (${id}:'${line}'). Message: '${e.message}'`, false);
             }
         });
+        core.setOutput("release_id", release.data.id);
     });
 }
 // Replaces $tag to the tag of the file piper output
@@ -158,24 +162,25 @@ function parseFilePiper(line) {
     else
         throw new Error("must have 1 '>'!");
 }
+// Gets a release by its id
+function getRelease(repository, release_id, octokit) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}", Object.assign(Object.assign({}, repository), { release_id }));
+    });
+}
 // Gets or creates (if not exists) a release
 function getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.info(`KEK: ${JSON.stringify(Object.assign(Object.assign({}, repository), { tag }))}`);
-            const result = yield octokit.request("GET /repos/{owner}/{repo}/releases", Object.assign({}, repository));
-            const release = result.data.filter(e => e.tag_name === tag)[0];
-            if (release) {
-                core.info(`Found release (id: ${release.id}!`);
-                return release;
-            }
-            else
-                throw new Error("Release not found!");
+            const result = yield octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", Object.assign(Object.assign({}, repository), { tag }));
+            core.info(`Found release (id: ${result.data.id}!`);
+            return result;
         }
         catch (e) {
             core.info("Release not found! Creating it...");
-            return (yield octokit.request("POST /repos/{owner}/{repo}/releases", Object.assign(Object.assign({}, repository), { tag_name: tag, name: release_name, body: release_body, prerelease,
-                draft }))).data;
+            return yield octokit.request("POST /repos/{owner}/{repo}/releases", Object.assign(Object.assign({}, repository), { tag_name: tag, name: release_name, body: release_body, prerelease,
+                draft }));
         }
     });
 }
@@ -187,7 +192,7 @@ function uploadToRelease(repository, release, file, name, tag, overwrite, octoki
         const stat = fs.statSync(file);
         if (stat.isFile()) {
             try {
-                const assets = yield octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", Object.assign(Object.assign({}, repository), { release_id: release.id }));
+                const assets = yield octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", Object.assign(Object.assign({}, repository), { release_id: release.data.id }));
                 const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
                 if (duplicateAsset) {
                     if (overwrite) {
@@ -200,7 +205,7 @@ function uploadToRelease(repository, release, file, name, tag, overwrite, octoki
                 const data = fs.readFileSync(file);
                 const data_size = stat.size;
                 try {
-                    const asset = yield octokit.request(`POST ${release.upload_url}`, {
+                    const asset = yield octokit.request(`POST ${release.data.upload_url}`, {
                         name,
                         data,
                         headers: {
