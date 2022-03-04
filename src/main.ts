@@ -132,16 +132,14 @@ function parseFilePiper(line: string) {
 // Gets or creates (if not exists) a release
 async function getOrCreateRelease(repository: any, tag: string, prerelease: boolean, draft: boolean, release_name: string, release_body: string, octokit: Octokit) {
     try {
-        core.debug(`repository: ${{ ...repository, tag }}`);
         const result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
             ...repository,
             tag
         });
-        core.debug(`Found release (id: ${result.data.id}!`);
+        core.info(`Found release (id: ${result.data.id}!`);
         return result;
     } catch (e: any) {
-        core.warning(`KEKWs: ${e}`);
-        core.debug("Release not found! Creating it...");
+        core.info("Release not found! Creating it...");
         return await octokit.request("POST /repos/{owner}/{repo}/releases", {
             ...repository,
             tag_name: tag,
@@ -157,12 +155,12 @@ async function getOrCreateRelease(repository: any, tag: string, prerelease: bool
 async function uploadToRelease(repository: any, release: any, file: string, name: string, tag: string, overwrite: boolean, octokit: Octokit) {
     const stat = fs.statSync(file);
     if (stat.isFile()) {
-        const assets = await octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", {
-            ...repository,
-            release_id: release.data.id
-        });
+        try {
+            const assets = await octokit.request("GET /repos/{owner}/{repo}/releases/{release_id}/assets", {
+                ...repository,
+                release_id: release.data.id
+            });
 
-        if (assets.status === 200) {
             const duplicateAsset = assets.data.filter(asset => asset.name === name)[0];
             if (duplicateAsset) {
                 if (overwrite) {
@@ -176,20 +174,24 @@ async function uploadToRelease(repository: any, release: any, file: string, name
             const data = fs.readFileSync(file);
             const data_size = stat.size;
 
-            const asset = await octokit.request(`POST ${release.data.upload_url}`, {
-                name,
-                data,
-                headers: {
-                    "content-type": "binary/octet-stream",
-                    "content-length": data_size
-                }
-            });
+            try {
+                const asset = await octokit.request(`POST ${release.data.upload_url}`, {
+                    name,
+                    data,
+                    headers: {
+                        "content-type": "binary/octet-stream",
+                        "content-length": data_size
+                    }
+                });
 
-            if (asset.status === 201) {
                 core.info(`Successfully uploaded ${file} (${asset.data.browser_download_url})!`);
                 return asset.data.browser_download_url;
-            } else error(`Failed to upload asset ('${file}' -> '${name}')`);
-        } else error(`Couldn't list all release assets (github token invalid?) ('${file}' -> '${name}')`);
+            } catch (e: any) {
+                error(`Failed to upload asset ('${file}' -> '${name}'); Error: ${e}`);
+            }
+        } catch (e: any) {
+            error(`Couldn't list all release assets (github token invalid?) ('${file}' -> '${name}'); Error: ${e}`);
+        }
     } else error(`File doesn't exist, or is a directory ('${file}' -> '${name}')`);
 }
 
