@@ -100,7 +100,7 @@ function main() {
         const repository = getInputRepository("repository", github.context.repo);
         const octokit = github.getOctokit(githubToken);
         core.info("Looking for release...");
-        const release = getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
+        const release = yield getOrCreateRelease(repository, tag, prerelease, draft, release_name, release_body, octokit);
         fileMap.forEach((line, id) => {
             try {
                 const { source, dest } = replaceTag(parseFilePiper(line), tag);
