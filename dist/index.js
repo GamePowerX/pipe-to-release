@@ -41,8 +41,8 @@ const github = __importStar(__nccwpck_require__(5438));
 const process_1 = __nccwpck_require__(7282);
 // Gets a input bool with a default value
 function getInputBool(name, def) {
-    const ip = core.getBooleanInput(name);
-    return ip === undefined ? def : ip;
+    const ip = core.getInput(name);
+    return ip === undefined ? def : ip.toLowerCase() === "true";
 }
 // Gets a required input string
 function getInputStringRequired(name) {

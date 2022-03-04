@@ -6,8 +6,8 @@ import { exit } from "process";
 
 // Gets a input bool with a default value
 function getInputBool(name: string, def: boolean) {
-    const ip = core.getBooleanInput(name);
-    return ip === undefined ? def : ip;
+    const ip = core.getInput(name);
+    return ip === undefined ? def : ip.toLowerCase() === "true";
 }
 
 // Gets a required input string
