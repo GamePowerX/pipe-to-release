@@ -132,7 +132,7 @@ function parseFilePiper(line: string) {
 // Gets or creates (if not exists) a release
 async function getOrCreateRelease(repository: any, tag: string, prerelease: boolean, draft: boolean, release_name: string, release_body: string, octokit: Octokit) {
     try {
-        core.info(`KEK: ${{ ...repository, tag }}`);
+        core.info(`KEK: ${JSON.stringify({ ...repository, tag })}`);
         const result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
             ...repository,
             tag
