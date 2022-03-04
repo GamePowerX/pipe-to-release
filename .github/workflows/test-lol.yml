@@ -24,12 +24,10 @@ jobs:
           
       - name: Create release
         id: release
-        uses: KotwOSS/pipe-to-release@2.0.3a6
+        uses: KotwOSS/pipe-to-release@2.0.3a7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-          filemap: |
-
+          
           skip_errors: true
 
           draft: true
@@ -39,7 +37,7 @@ jobs:
           release_body: "This is an automated build"
 
       - name: Pipe files to release
-        uses: KotwOSS/pipe-to-release@2.0.3a6
+        uses: KotwOSS/pipe-to-release@2.0.3a7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -51,7 +49,7 @@ jobs:
           release_id: ${{ steps.release.outputs.release_id }}
 
       - name: Pipe files to release 2
-        uses: KotwOSS/pipe-to-release@2.0.3a6
+        uses: KotwOSS/pipe-to-release@2.0.3a7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
