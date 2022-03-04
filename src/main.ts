@@ -131,21 +131,16 @@ function parseFilePiper(line: string) {
 
 // Gets or creates (if not exists) a release
 async function getOrCreateRelease(repository: any, tag: string, prerelease: boolean, draft: boolean, release_name: string, release_body: string, octokit: Octokit) {
-    let result;
     try {
-        result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
+        core.debug(`repository: ${{ ...repository, tag }}`);
+        const result = await octokit.request("GET /repos/{owner}/{repo}/releases/tags/{tag}", {
             ...repository,
             tag
         });
-    } catch (e: any) {
-        core.warning(`KEKW: ${e}`);
-        return;
-    }
-
-    if (result.status === 200) {
         core.debug(`Found release (id: ${result.data.id}!`);
         return result;
-    } else {
+    } catch (e: any) {
+        core.warning(`KEKW: ${e}`);
         core.debug("Release not found! Creating it...");
         return await octokit.request("POST /repos/{owner}/{repo}/releases", {
             ...repository,
