@@ -16,7 +16,7 @@ Heres a list of all the options you can include into the with block.
 | ------------ | ------------------------------------------------------------------------------------------- | -------- | --------------------------- |
 | token        | The token this action uses to contact the github api.                                       | true     | none                        |
 | repository   | The repository where the release will be created in.                                        | false    | active repository           |
-| filemap      | The list of files that will be uploaded. See <a href="#file-piper">FilePiper</a> for more information. | true     | none                        |
+| filemap      | The list of files that will be uploaded. See <a href="#file-piper">FilePiper</a> for more information. | false     | empty                        |
 | skip_errors  | If true, the action will skip errors instead of setting the build to failed.                | false    | true                        |
 | draft        | If true, the action will create a draft release. (Not published)                            | false    | true                        |
 | prerelease   | If true, the action will create a prerelease.                                                | false    | false                       |

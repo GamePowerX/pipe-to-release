@@ -53,9 +53,10 @@ function getInputString(name, def) {
     const ip = core.getInput(name);
     return ip === undefined || ip.trim() === "" ? def : ip;
 }
-// Gets a required multiline input
-function getInputArrayRequired(name) {
-    return core.getMultilineInput(name, { required: true });
+// Gets a multiline input
+function getInputArray(name, def) {
+    const ip = core.getMultilineInput(name);
+    return ip === undefined ? def : ip;
 }
 // Gets a repository from the input (format owner/repo)
 function getInputRepository(name, def) {
@@ -86,7 +87,7 @@ function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const githubToken = getInputStringRequired("token");
         // File map
-        const fileMap = getInputArrayRequired("filemap");
+        const fileMap = getInputArray("filemap", []);
         // Release stuff
         const release_name = getInputString("release_name", "My cool release");
         const release_body = getInputString("release_body", "This is a very cool release");
